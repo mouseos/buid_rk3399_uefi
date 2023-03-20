@@ -37,6 +37,7 @@ jobs:
 
       - name: Set environment variables
         run: |
+          cd $WORKSPACE
           ls
           pwd
           tree
