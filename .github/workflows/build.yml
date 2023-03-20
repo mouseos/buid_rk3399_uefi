@@ -1,62 +1,45 @@
-name: Build EDK2 Firmware
+name: Build Rk3399-SDK UEFI firmware
 
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install required packages
+      - name: Install necessary packages
+        run: sudo apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
+      - name: Clone edk2
+        run: git clone https://github.com/tianocore/edk2.git
+      - name: Checkout edk2 version
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
-
-      - name: Clone EDK2, EDK2-non-osi, and EDK2-platforms
-        run: |
-          export WORKSPACE="$(pwd)/build"
-          mkdir $WORKSPACE
-          cd $WORKSPACE
-          git clone https://github.com/tianocore/edk2.git
-          pushd edk2
+          cd edk2
           git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
-          popd
-          git clone https://github.com/tianocore/edk2-non-osi.git
-          pushd edk2-non-osi
+      - name: Clone edk2-non-osi
+        run: git clone https://github.com/tianocore/edk2-non-osi.git
+      - name: Checkout edk2-non-osi version
+        run: |
+          cd edk2-non-osi
           git checkout 1e2ca640be54d7a4d5d804c4f33894d099432de3
-          popd
-          git clone https://github.com/tianocore/edk2-platforms.git
-          pushd edk2-platforms
+      - name: Clone edk2-platforms
+        run: git clone https://github.com/tianocore/edk2-platforms.git
+      - name: Checkout edk2-platforms version
+        run: |
+          cd edk2-platforms
           git checkout 861c200cda1417539d46fe3b1eba2b582fa72cbb
-          popd
-          git clone https://github.com/andreiw/rk3399-edk2.git edk2-platforms/Platform/Rockchip
-
+      - name: Clone Rk3399Pkg
+        run: git clone https://github.com/andreiw/rk3399-edk2.git edk2-platforms/Platform/Rockchip
       - name: Set environment variables
         run: |
-          cd $WORKSPACE
-          ls
-          pwd
-          tree
           export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
-          export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
-          . $WORKSPACE/edk2/edksetup.sh
-
-      - name: Compile BaseTools
-        run: make -C $WORKSPACE/edk2/BaseTools
-
+          export PACKAGES_PATH=$PWD/edk2:$PWD/edk2-platforms:$PWD/edk2-non-osi
+          . edk2/edksetup.sh
+          make -C edk2/BaseTools
       - name: Build UEFI firmware
-        run: build -a AARCH64 -t GCC5 -p $WORKSPACE/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG -n $(nproc)
-
-      - name: Create loader image
-        run: $WORKSPACE/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot $WORKSPACE/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd $WORKSPACE/RK3399_SDK_UEFI.img
-
-      - name: Upload firmware artifacts
+        run: |
+          build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
+          $PWD/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
+      - name: Upload firmware image
         uses: actions/upload-artifact@v2
         with:
-          name: Firmware Artifacts
-          path: |
-            $WORKSPACE/RK3399_SDK_UEFI.img
+          name: RK3399_SDK_UEFI.img
+          path: RK3399_SDK_UEFI.img
