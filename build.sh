@@ -1,4 +1,4 @@
-sudo apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
+sudo apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu python3
 # If you want to use a different workspace, change the target directory below
 export WORKSPACE=~/workspace
 mkdir $WORKSPACE
