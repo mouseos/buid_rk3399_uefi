@@ -1,4 +1,4 @@
-name: Build Rk3399-SDK UEFI firmware
+name: Build EDK2 for Rk3399
 
 on: [push]
 
@@ -6,41 +6,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install necessary packages
-        run: sudo apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
-      - name: Clone edk2
-        run: git clone https://github.com/tianocore/edk2.git
-      - name: Checkout edk2 version
-        run: |
-          cd edk2
-          git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
-      - name: Clone edk2-non-osi
-        run: git clone https://github.com/tianocore/edk2-non-osi.git
-      - name: Checkout edk2-non-osi version
-        run: |
-          cd edk2-non-osi
-          git checkout 1e2ca640be54d7a4d5d804c4f33894d099432de3
-      - name: Clone edk2-platforms
-        run: git clone https://github.com/tianocore/edk2-platforms.git
-      - name: Checkout edk2-platforms version
-        run: |
-          cd edk2-platforms
-          git checkout 861c200cda1417539d46fe3b1eba2b582fa72cbb
-      - name: Clone Rk3399Pkg
-        run: git clone https://github.com/andreiw/rk3399-edk2.git edk2-platforms/Platform/Rockchip
-      - name: Set environment variables
-        run: |
-          ls -l
-          export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
-          export PACKAGES_PATH=$PWD/edk2:$PWD/edk2-platforms:$PWD/edk2-non-osi
-          . edk2/edksetup.sh
-          make -C edk2/BaseTools
-      - name: Build UEFI firmware
-        run: |
-          build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
-          $PWD/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
-      - name: Upload firmware image
-        uses: actions/upload-artifact@v2
-        with:
-          name: RK3399_SDK_UEFI.img
-          path: RK3399_SDK_UEFI.img
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
+
+    - name: Clone EDK2 and related repos
+      run: |
+        export WORKSPACE=~/workspace
+        mkdir $WORKSPACE
+        cd $WORKSPACE
+        git clone https://github.com/tianocore/edk2.git
+        pushd edk2
+        git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
+        popd
+        git clone https://github.com/tianocore/edk2-non-osi.git
+        pushd edk2-non-osi
+        git checkout 1e2ca640be54d7a4d5d804c4f33894d099432de3
+        popd
+        git clone https://github.com/tianocore/edk2-platforms.git
+        pushd edk2-platforms
+        git checkout 861c200cda1417539d46fe3b1eba2b582fa72cbb
+        popd
+        git clone https://github.com/andreiw/rk3399-edk2.git edk2-platforms/Platform/Rockchip
+
+    - name: Build EDK2 for Rk3399
+      env:
+        WORKSPACE: ~/workspace
+      run: |
+        export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
+        export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
+        . edk2/edksetup.sh
+        make -C edk2/BaseTools
+        build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
+        edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
